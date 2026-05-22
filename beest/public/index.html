@@ -145,9 +145,11 @@
 	const urlParams = new URLSearchParams(window.location.search);
 	const token = urlParams.get('token');
 
-	const hashParts = window.location.hash.substring(1).split('|');
-	const keyHash = hashParts[0];
-	const originalFileName = hashParts[1] ? decodeURIComponent(hashParts[1]) : 'beest-file';
+	const rawHash = window.location.hash.substring(1);
+	const decodedHash = decodeURIComponent(rawHash);
+	const hashParts = decodedHash.split('|');
+	const keyHash = hashParts[0].replace(/ /g, '+');
+	const originalFileName = hashParts[1] || 'beest-file';
 
 	if (token && keyHash) {
 		uploadView.classList.add('hidden');
