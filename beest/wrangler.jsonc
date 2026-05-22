@@ -1,5 +1,11 @@
 {
 	"name": "beest",
 	"main": "src/index.js",
-	"compatibility_date": "2026-05-20"
+	"compatibility_date": "2026-05-22",
+	"vars": {
+		"UPSTASH_URL": "https://glowing-blowfish-132310.upstash.io",
+		"B2_ENDPOINT": "https://s3.eu-central-003.backblazeb2.com",
+		"B2_BUCKET_NAME": "beest-files",
+		"B2_REGION": "eu-central-003"
+	}
 }

@@ -44,7 +44,7 @@
 			border: 3px dashed #998774;
 			border-radius: 8px;
 			padding: 2.5rem;
-			margin-bottom: 1.5rem;
+			margin-bottom: 1rem;
 			cursor: pointer;
 			word-break: break-all;
 			background: rgba(0,0,0,0.1);
@@ -53,6 +53,20 @@
 		#drop-zone:hover {
 			background: rgba(0,0,0,0.2);
 			border-color: #f0e6d2;
+		}
+		select {
+			font-family: 'Bebas Neue', sans-serif;
+			background: #4a3f34;
+			color: #f0e6d2;
+			border: 2px solid #2e261f;
+			border-radius: 4px;
+			padding: 0.6rem;
+			font-size: 1.3rem;
+			width: 100%;
+			margin-bottom: 1.5rem;
+			box-sizing: border-box;
+			cursor: pointer;
+			letter-spacing: 1px;
 		}
 		button {
 			font-family: 'Bebas Neue', sans-serif;
@@ -112,9 +126,17 @@
 	<div id="upload-view">
 		<div id="drop-zone">Drag & Drop File Here<br><br>or Click to Select</div>
 		<input type="file" id="file-input" class="hidden">
+
+		<select id="limit-select">
+			<option value="clicks-1">1 Download (Self-Destruct)</option>
+			<option value="clicks-5">5 Downloads</option>
+			<option value="clicks-10">10 Downloads</option>
+			<option value="time-86400">24 Hours (Unlimited Clicks)</option>
+		</select>
+
 		<button id="upload-btn">ENCRYPT & UPLOAD</button>
 		<div id="link-container" class="hidden">
-			<p>Share this link (self-destructs after 1 read):</p>
+			<p>Share this link:</p>
 			<input type="text" id="share-link" readonly>
 		</div>
 	</div>
@@ -135,6 +157,7 @@
 	const downloadView = document.getElementById('download-view');
 	const dropZone = document.getElementById('drop-zone');
 	const fileInput = document.getElementById('file-input');
+	const limitSelect = document.getElementById('limit-select');
 	const uploadBtn = document.getElementById('upload-btn');
 	const statusEl = document.getElementById('status');
 	const linkContainer = document.getElementById('link-container');
@@ -222,8 +245,15 @@
 			const { encryptedBlob, keyBase64 } = await encryptFile(selectedFile);
 			statusEl.innerText = "Uploading to server...";
 
+			const limitVal = limitSelect.value;
+			const [limitType, limitNum] = limitVal.split('-');
+
 			const response = await fetch(`${API_URL}/upload`, {
 				method: 'POST',
+				headers: {
+					'x-limit-type': limitType,
+					'x-limit-value': limitNum
+				},
 				body: encryptedBlob
 			});
 			const data = await response.json();
@@ -281,7 +311,7 @@
 			a.click();
 			URL.revokeObjectURL(url);
 
-			statusEl.innerText = "File decrypted and downloaded. It is now gone forever.";
+			statusEl.innerText = "File decrypted and downloaded.";
 		} catch (err) {
 			statusEl.innerText = "Error: " + err.message;
 		}
