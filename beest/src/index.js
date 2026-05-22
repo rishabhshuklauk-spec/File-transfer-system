@@ -17,6 +17,7 @@ app.post('/upload', async (c) => {
 		accessKeyId: c.env.B2_KEY_ID,
 		secretAccessKey: c.env.B2_APPLICATION_KEY,
 		service: 's3',
+		region: c.env.B2_REGION,
 	});
 
 	const file = await c.req.blob();
@@ -49,6 +50,7 @@ app.get('/download/:token', async (c) => {
 		accessKeyId: c.env.B2_KEY_ID,
 		secretAccessKey: c.env.B2_APPLICATION_KEY,
 		service: 's3',
+		region: c.env.B2_REGION,
 	});
 
 	const objectKey = await redis.get(token);

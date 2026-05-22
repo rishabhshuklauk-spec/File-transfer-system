@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Beest - Secure File Transfer</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Caveat:wght@400..700&display=swap" rel="stylesheet">
+	<style>
+		body {
+			background-color: #8c7861;
+			background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E");
+			color: #f0e6d2;
+			font-family: 'Caveat', cursive;
+			font-size: 1.4rem;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 100vh;
+			margin: 0;
+		}
+		h1, h2 {
+			font-family: 'Bebas Neue', sans-serif;
+			letter-spacing: 2px;
+			color: #ffffff;
+			margin-top: 0;
+			text-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+		}
+		h1 {
+			font-size: 3rem;
+			margin-bottom: 0.5rem;
+		}
+		.container {
+			background: #5e5143;
+			border-radius: 12px;
+			padding: 2.5rem;
+			text-align: center;
+			width: 100%;
+			max-width: 500px;
+			box-shadow: 6px 6px 0px rgba(0,0,0,0.15);
+			border: 2px solid #4a3f34;
+		}
+		#drop-zone {
+			border: 3px dashed #998774;
+			border-radius: 8px;
+			padding: 2.5rem;
+			margin-bottom: 1.5rem;
+			cursor: pointer;
+			word-break: break-all;
+			background: rgba(0,0,0,0.1);
+			transition: all 0.2s ease;
+		}
+		#drop-zone:hover {
+			background: rgba(0,0,0,0.2);
+			border-color: #f0e6d2;
+		}
+		button {
+			font-family: 'Bebas Neue', sans-serif;
+			background: #df7a7a;
+			color: #ffffff;
+			border: 3px solid #2e261f;
+			box-shadow: 4px 4px 0px #2e261f;
+			border-radius: 6px;
+			padding: 0.5rem 1.5rem;
+			font-size: 1.8rem;
+			letter-spacing: 1px;
+			cursor: pointer;
+			transition: transform 0.1s, box-shadow 0.1s;
+			margin-top: 1rem;
+		}
+		button:active {
+			transform: translate(4px, 4px);
+			box-shadow: 0px 0px 0px #2e261f;
+		}
+		button:disabled {
+			background: #998774;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: 4px 4px 0px #2e261f;
+		}
+		input[type="text"] {
+			background: #4a3f34;
+			color: #f0e6d2;
+			border: 2px solid #2e261f;
+			border-radius: 4px;
+			padding: 0.8rem;
+			font-family: monospace;
+			font-size: 1rem;
+			width: 90%;
+			margin-top: 0.5rem;
+		}
+		#link-container {
+			background: rgba(0,0,0,0.15);
+			padding: 1rem;
+			border-radius: 8px;
+			margin-top: 1.5rem;
+			border: 1px dashed #998774;
+		}
+		#status {
+			margin-top: 1.5rem;
+			font-weight: bold;
+		}
+		.hidden {
+			display: none !important;
+		}
+	</style>
+</head>
+<body>
+<div class="container">
+	<h1>FILE TRANSFER SYSTEM</h1>
+
+	<div id="upload-view">
+		<div id="drop-zone">Drag & Drop File Here<br><br>or Click to Select</div>
+		<input type="file" id="file-input" class="hidden">
+		<button id="upload-btn">ENCRYPT & UPLOAD</button>
+		<div id="link-container" class="hidden">
+			<p>Share this link (self-destructs after 1 read):</p>
+			<input type="text" id="share-link" readonly>
+		</div>
+	</div>
+
+	<div id="download-view" class="hidden">
+		<h2>INCOMING FILE</h2>
+		<h3 id="incoming-filename" style="color: #df7a7a;"></h3>
+		<button id="download-btn">DECRYPT & DOWNLOAD</button>
+	</div>
+
+	<p id="status"></p>
+</div>
+
+<script>
+	const API_URL = 'https://beest.itransfer.workers.dev';
+
+	const uploadView = document.getElementById('upload-view');
+	const downloadView = document.getElementById('download-view');
+	const dropZone = document.getElementById('drop-zone');
+	const fileInput = document.getElementById('file-input');
+	const uploadBtn = document.getElementById('upload-btn');
+	const statusEl = document.getElementById('status');
+	const linkContainer = document.getElementById('link-container');
+	const shareLinkEl = document.getElementById('share-link');
+	const downloadBtn = document.getElementById('download-btn');
+	const incomingFilenameEl = document.getElementById('incoming-filename');
+
+	const urlParams = new URLSearchParams(window.location.search);
+	const token = urlParams.get('token');
+
+	const hashParts = window.location.hash.substring(1).split('|');
+	const keyHash = hashParts[0];
+	const originalFileName = hashParts[1] ? decodeURIComponent(hashParts[1]) : 'beest-file';
+
+	if (token && keyHash) {
+		uploadView.classList.add('hidden');
+		downloadView.classList.remove('hidden');
+		incomingFilenameEl.innerText = originalFileName;
+	}
+
+	let selectedFile = null;
+
+	dropZone.addEventListener('click', () => fileInput.click());
+
+	fileInput.addEventListener('change', (e) => {
+		if (e.target.files.length > 0) {
+			selectedFile = e.target.files[0];
+			dropZone.innerText = selectedFile.name;
+		}
+	});
+
+	dropZone.addEventListener('dragover', (e) => {
+		e.preventDefault();
+		dropZone.style.background = 'rgba(0,0,0,0.2)';
+		dropZone.style.borderColor = '#f0e6d2';
+	});
+
+	dropZone.addEventListener('dragleave', () => {
+		dropZone.style.background = 'rgba(0,0,0,0.1)';
+		dropZone.style.borderColor = '#998774';
+	});
+
+	dropZone.addEventListener('drop', (e) => {
+		e.preventDefault();
+		dropZone.style.background = 'rgba(0,0,0,0.1)';
+		dropZone.style.borderColor = '#998774';
+		if (e.dataTransfer.files.length > 0) {
+			selectedFile = e.dataTransfer.files[0];
+			dropZone.innerText = selectedFile.name;
+		}
+	});
+
+	async function encryptFile(file) {
+		const buffer = await file.arrayBuffer();
+		const key = await crypto.subtle.generateKey(
+			{ name: "AES-GCM", length: 256 },
+			true,
+			["encrypt", "decrypt"]
+		);
+		const iv = crypto.getRandomValues(new Uint8Array(12));
+		const encryptedContent = await crypto.subtle.encrypt(
+			{ name: "AES-GCM", iv: iv },
+			key,
+			buffer
+		);
+		const exportedKey = await crypto.subtle.exportKey("raw", key);
+		const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
+		const finalBuffer = new Uint8Array(iv.length + encryptedContent.byteLength);
+		finalBuffer.set(iv, 0);
+		finalBuffer.set(new Uint8Array(encryptedContent), iv.length);
+		return { encryptedBlob: new Blob([finalBuffer]), keyBase64 };
+	}
+
+	uploadBtn.addEventListener('click', async () => {
+		if (!selectedFile) {
+			statusEl.innerText = "Please select a file first.";
+			return;
+		}
+		statusEl.innerText = "Encrypting locally...";
+		uploadBtn.disabled = true;
+
+		try {
+			const { encryptedBlob, keyBase64 } = await encryptFile(selectedFile);
+			statusEl.innerText = "Uploading to server...";
+
+			const response = await fetch(`${API_URL}/upload`, {
+				method: 'POST',
+				body: encryptedBlob
+			});
+			const data = await response.json();
+
+			if (data.success) {
+				statusEl.innerText = "Upload complete!";
+				const baseUrl = window.location.origin + window.location.pathname;
+				const shareUrl = `${baseUrl}?token=${data.token}#${keyBase64}|${encodeURIComponent(selectedFile.name)}`;
+				linkContainer.classList.remove('hidden');
+				shareLinkEl.value = shareUrl;
+			} else {
+				statusEl.innerText = "Upload failed.";
+			}
+		} catch (err) {
+			statusEl.innerText = "Error: " + err.message;
+		} finally {
+			uploadBtn.disabled = false;
+		}
+	});
+
+	downloadBtn.addEventListener('click', async () => {
+		statusEl.innerText = "Fetching file from server...";
+		downloadBtn.disabled = true;
+
+		try {
+			const response = await fetch(`${API_URL}/download/${token}`);
+			if (!response.ok) throw new Error("File dead or already deleted.");
+
+			const encryptedBuffer = await response.arrayBuffer();
+			statusEl.innerText = "Decrypting locally...";
+
+			const iv = encryptedBuffer.slice(0, 12);
+			const ciphertext = encryptedBuffer.slice(12);
+
+			const rawKey = Uint8Array.from(atob(keyHash), c => c.charCodeAt(0));
+			const cryptoKey = await crypto.subtle.importKey(
+				"raw",
+				rawKey,
+				"AES-GCM",
+				true,
+				["decrypt"]
+			);
+
+			const decryptedBuffer = await crypto.subtle.decrypt(
+				{ name: "AES-GCM", iv: new Uint8Array(iv) },
+				cryptoKey,
+				ciphertext
+			);
+
+			const blob = new Blob([decryptedBuffer]);
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = originalFileName;
+			a.click();
+			URL.revokeObjectURL(url);
+
+			statusEl.innerText = "File decrypted and downloaded. It is now gone forever.";
+		} catch (err) {
+			statusEl.innerText = "Error: " + err.message;
+		}
+	});
+</script>
+</body>
+</html>
