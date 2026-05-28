@@ -45,11 +45,15 @@ app.post('/upload', async (c) => {
 	const redisPayload = { fileId, limitType, value: limitValue };
 	const ttl = limitType === 'time' ? limitValue : 604800;
 
-	await fetch(env.UPSTASH_URL, {
+	const upstashRes = await fetch(env.UPSTASH_URL, {
 		method: 'POST',
 		headers: { Authorization: `Bearer ${env.UPSTASH_TOKEN}`, 'Content-Type': 'application/json' },
 		body: JSON.stringify(['SET', token, JSON.stringify(redisPayload), 'EX', ttl])
 	});
+	
+	if (!upstashRes.ok) {
+		throw new Error("Upstash Error: " + await upstashRes.text());
+	}
 
 	return c.json({ success: true, token });
 });
