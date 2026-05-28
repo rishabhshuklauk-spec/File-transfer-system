@@ -212,25 +212,52 @@
 		}
 	});
 
+	function encodeBase64(buffer) {
+		const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		const bytes = new Uint8Array(buffer);
+		let result = '';
+		for (let i = 0; i < bytes.length; i += 3) {
+			const b1 = bytes[i];
+			const b2 = i + 1 < bytes.length ? bytes[i + 1] : 0;
+			const b3 = i + 2 < bytes.length ? bytes[i + 2] : 0;
+			const triple = (b1 << 16) + (b2 << 8) + b3;
+			result += chars[(triple >> 18) & 63];
+			result += chars[(triple >> 12) & 63];
+			result += i + 1 < bytes.length ? chars[(triple >> 6) & 63] : '=';
+			result += i + 2 < bytes.length ? chars[triple & 63] : '=';
+		}
+		return result;
+	}
+
 	async function encryptFile(file) {
+		window.debugStep = "arrayBuffer";
 		const buffer = await file.arrayBuffer();
+		window.debugStep = "generateKey";
 		const key = await crypto.subtle.generateKey(
 			{ name: "AES-GCM", length: 256 },
 			true,
 			["encrypt", "decrypt"]
 		);
+		window.debugStep = "getRandomValues";
 		const iv = crypto.getRandomValues(new Uint8Array(12));
+		window.debugStep = "encrypt";
 		const encryptedContent = await crypto.subtle.encrypt(
 			{ name: "AES-GCM", iv: iv },
 			key,
 			buffer
 		);
+		window.debugStep = "exportKey";
 		const exportedKey = await crypto.subtle.exportKey("raw", key);
-		const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
+		window.debugStep = "encodeBase64";
+		const keyBase64 = encodeBase64(exportedKey);
+		window.debugStep = "safeKeyBase64";
+		const safeKeyBase64 = keyBase64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+		window.debugStep = "finalBuffer";
 		const finalBuffer = new Uint8Array(iv.length + encryptedContent.byteLength);
 		finalBuffer.set(iv, 0);
 		finalBuffer.set(new Uint8Array(encryptedContent), iv.length);
-		return { encryptedBlob: new Blob([finalBuffer]), keyBase64 };
+		window.debugStep = "blob";
+		return { encryptedBlob: new Blob([finalBuffer]), keyBase64: safeKeyBase64 };
 	}
 
 	uploadBtn.addEventListener('click', async () => {
@@ -242,12 +269,17 @@
 		uploadBtn.disabled = true;
 
 		try {
+			window.debugStep = "encryptFile_call";
 			const { encryptedBlob, keyBase64 } = await encryptFile(selectedFile);
+			
+			window.debugStep = "set_status_uploading";
 			statusEl.innerText = "Uploading to server...";
 
+			window.debugStep = "read_limits";
 			const limitVal = limitSelect.value;
 			const [limitType, limitNum] = limitVal.split('-');
 
+			window.debugStep = "fetch_call";
 			const response = await fetch(`${API_URL}/upload`, {
 				method: 'POST',
 				headers: {
@@ -256,8 +288,17 @@
 				},
 				body: encryptedBlob
 			});
+			
+			window.debugStep = "check_response_ok";
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(`Server Error (${response.status}): ` + errorText.substring(0, 100));
+			}
+			
+			window.debugStep = "fetch_json";
 			const data = await response.json();
 
+			window.debugStep = "upload_success_ui";
 			if (data.success) {
 				statusEl.innerText = "Upload complete!";
 				const baseUrl = window.location.origin + window.location.pathname;
@@ -268,7 +309,8 @@
 				statusEl.innerText = "Upload failed.";
 			}
 		} catch (err) {
-			statusEl.innerText = "Error: " + err.message;
+			statusEl.innerText = `Error [${window.debugStep}]: ` + err.message + " | Stack: " + (err.stack || "No stack");
+			console.error(err);
 		} finally {
 			uploadBtn.disabled = false;
 		}
