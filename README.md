@@ -1,1 +1,1 @@
-A super cool file transfer service. This website is themed around hack club beest and allows you to upload the file of your choice and then it will be encrypted. The website then gives you a link you can use to send to a friend and they can get the file.
+A super cool file transfer service. This website is themed around hack club beest and allows you to upload the file of your choice and then it will be encrypted. The website then gives you a link you can use to send to a friend and they can get the file. It uses a cloudflare worker and backblaze b2 for storage.
