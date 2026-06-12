@@ -12,7 +12,7 @@
 		"aws4fetch": "^1.0.20",
 		"dotenv": "^16.4.5",
 		"express": "^4.19.2",
-		"hono": "^4.12.21",
+		"hono": "^4.12.25",
 		"multer": "^1.4.5-lts.1"
 	},
 	"devDependencies": {

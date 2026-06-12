@@ -168,13 +168,18 @@
 	const urlParams = new URLSearchParams(window.location.search);
 	const token = urlParams.get('token');
 
-	const rawHash = window.location.hash.substring(1);
-	const decodedHash = decodeURIComponent(rawHash);
-	const hashParts = decodedHash.split('|');
-	const keyHash = hashParts[0].replace(/ /g, '+');
-	const originalFileName = hashParts[1] || 'beest-file';
+	const hashParams = new URLSearchParams(window.location.hash.substring(1));
+	let keyHash = hashParams.get('key') || '';
 
-	if (token && keyHash) {
+	keyHash = keyHash.replace(/ /g, '+');
+	keyHash = keyHash.replace(/[^A-Za-z0-9+/=]/g, '');
+	while (keyHash.length % 4 !== 0) {
+		keyHash += '=';
+	}
+
+	const originalFileName = hashParams.get('name') || 'beest-file';
+
+	if (token && keyHash.length > 0) {
 		uploadView.classList.add('hidden');
 		downloadView.classList.remove('hidden');
 		incomingFilenameEl.innerText = originalFileName;
@@ -261,7 +266,7 @@
 			if (data.success) {
 				statusEl.innerText = "Upload complete!";
 				const baseUrl = window.location.origin + window.location.pathname;
-				const shareUrl = `${baseUrl}?token=${data.token}#${keyBase64}|${encodeURIComponent(selectedFile.name)}`;
+				const shareUrl = `${baseUrl}?token=${data.token}#key=${encodeURIComponent(keyBase64)}&name=${encodeURIComponent(selectedFile.name)}`;
 				linkContainer.classList.remove('hidden');
 				shareLinkEl.value = shareUrl;
 			} else {
