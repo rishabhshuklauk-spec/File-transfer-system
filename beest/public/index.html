@@ -121,7 +121,7 @@
 </head>
 <body>
 <div class="container">
-	<h1>FILE TRANSFER SYSTEM</h1>
+	<h1>Itransfer</h1>
 
 	<div id="upload-view">
 		<div id="drop-zone">Drag & Drop File Here<br><br>or Click to Select</div>
@@ -132,7 +132,9 @@
 			<option value="clicks-5">5 Downloads</option>
 			<option value="clicks-10">10 Downloads</option>
 			<option value="time-86400">24 Hours (Unlimited Clicks)</option>
+			<option value="clicks-custom">Custom clicks...</option>
 		</select>
+		<input type="number" id="custom-clicks" class="hidden" min="1" placeholder="Enter number of clicks" style="margin-top:0.5rem;padding:0.6rem;width:100%;box-sizing:border-box;">
 
 		<button id="upload-btn">ENCRYPT & UPLOAD</button>
 		<div id="link-container" class="hidden">
@@ -158,6 +160,16 @@
 	const dropZone = document.getElementById('drop-zone');
 	const fileInput = document.getElementById('file-input');
 	const limitSelect = document.getElementById('limit-select');
+	const customClicksInput = document.getElementById('custom-clicks');
+	limitSelect.addEventListener('change', () => {
+		if (limitSelect.value === 'clicks-custom') {
+			customClicksInput.classList.remove('hidden');
+			customClicksInput.focus();
+		} else {
+			customClicksInput.classList.add('hidden');
+		}
+	});
+
 	const uploadBtn = document.getElementById('upload-btn');
 	const statusEl = document.getElementById('status');
 	const linkContainer = document.getElementById('link-container');
@@ -250,8 +262,15 @@
 			const { encryptedBlob, keyBase64 } = await encryptFile(selectedFile);
 			statusEl.innerText = "Uploading to server...";
 
-			const limitVal = limitSelect.value;
-			const [limitType, limitNum] = limitVal.split('-');
+			let limitType, limitNum;
+			if (limitSelect.value === 'clicks-custom') {
+				limitType = 'clicks';
+				const v = Number(customClicksInput.value);
+				limitNum = (v && v > 0) ? String(v) : '1';
+			} else {
+				const limitVal = limitSelect.value;
+				[limitType, limitNum] = limitVal.split('-');
+			}
 
 			const response = await fetch(`${API_URL}/upload`, {
 				method: 'POST',
