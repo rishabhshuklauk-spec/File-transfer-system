@@ -183,8 +183,7 @@
 	const hashParams = new URLSearchParams(window.location.hash.substring(1));
 	let keyHash = hashParams.get('key') || '';
 
-	keyHash = keyHash.replace(/ /g, '+');
-	keyHash = keyHash.replace(/[^A-Za-z0-9+/=]/g, '');
+	keyHash = keyHash.replace(/-/g, '+').replace(/_/g, '/');
 	while (keyHash.length % 4 !== 0) {
 		keyHash += '=';
 	}
