@@ -289,7 +289,7 @@
 		try {
 			window.debugStep = "encryptFile_call";
 			const { encryptedBlob, keyBase64 } = await encryptFile(selectedFile);
-			
+
 			window.debugStep = "set_status_uploading";
 			statusEl.innerText = "Uploading to server...";
 
@@ -313,13 +313,13 @@
 				},
 				body: encryptedBlob
 			});
-			
+
 			window.debugStep = "check_response_ok";
 			if (!response.ok) {
 				const errorText = await response.text();
 				throw new Error(`Server Error (${response.status}): ` + errorText.substring(0, 100));
 			}
-			
+
 			window.debugStep = "fetch_json";
 			const data = await response.json();
 
@@ -360,7 +360,7 @@
 	copyFallbackBtn.addEventListener('click', () => {
 		shareLinkEl.select();
 		shareLinkEl.setSelectionRange(0, 99999);
-		statusEl.innerText = 'Link selected — press Cmd+C to copy!';
+		statusEl.innerText = 'Link selected — press Cmd+C or Ctrl+C to copy!';
 	});
 
 	downloadBtn.addEventListener('click', async () => {
